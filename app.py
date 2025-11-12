@@ -1,49 +1,44 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from src.utils import load_books, load_ratings, load_users
+from src.utils import load_books
 from src.preprocessing import prepare_books
 from src.content_model import ContentRecommender
-from src.collaborative_model import CollaborativeRecommender
+from src.popularity import top_popular
 from rapidfuzz import process, fuzz
-import time
+import json, time
+st.set_page_config(page_title='Book Recommender (single books.csv)', layout='wide')
 
-st.set_page_config(page_title='Book Recommender (New Dataset)', layout='wide')
+# load meta to know which columns were auto-detected
+try:
+    meta = json.load(open('data_meta.json','r'))
+except Exception:
+    meta = None
 
 @st.cache_data
 def load_data():
     books = load_books()
-    ratings = load_ratings()
-    users = load_users()
-    books = prepare_books(books)
-    ratings['book_id'] = ratings['book_id'].astype(str)
-    ratings['user_id'] = ratings['user_id'].astype(str)
-    if 'rating' not in ratings.columns and 'ratings' in ratings.columns:
-        ratings.rename(columns={'ratings':'rating'}, inplace=True)
-    ratings['rating'] = ratings['rating'].astype(float)
-    return books, ratings, users
+    # detect defaults using columns from meta if available
+    title_col = meta.get('title_col') if meta else None
+    author_col = meta.get('author_col') if meta else None
+    id_col = meta.get('id_col') if meta else None
+    rating_col = meta.get('rating_col') if meta else None
+    books_prepared = prepare_books(books, title_col or 'title', author_col or 'authors', id_col or 'book_id', rating_col)
+    return books_prepared
 
-@st.cache_resource
-def build_models(books, ratings, method='count'):
-    # content model (count or tfidf)
-    content = ContentRecommender(method=method, max_features=15000, ngram_range=(1,2)).fit(books)
-    cf = CollaborativeRecommender(n_factors=60).fit(ratings[['user_id','book_id','rating']])
-    return content, cf
+books = load_data()
+# models
+content_model = ContentRecommender(method='count', max_features=8000).fit(books)
 
-books, ratings, users = load_data()
-content_model, cf_model = build_models(books, ratings, method='count')
-
-st.title('📚 Book Recommender — New Dataset')
-st.write('Content (CountVectorizer/TF-IDF) + Collaborative (TruncatedSVD)')
+st.title('📚 Book Recommender — Single `books.csv`')
+st.write('This app uses only the uploaded `data/books.csv`. Content-based recommendations + popularity fallback.')
 
 with st.sidebar:
     st.header('Controls')
-    mode = st.selectbox('Mode', ['Content (title)', 'Collaborative (user)', 'Hybrid (title + user)'])
-    vector_method = st.selectbox('Content vectorizer', ['count', 'tfidf'])
+    mode = st.selectbox('Mode', ['Content (title)', 'Top popular'])
     topn = st.slider('Top N', 5, 30, 10)
-    alpha = st.slider('Content weight (alpha)', 0.0, 1.0, 0.6)
-    query = st.text_input('Enter title or user id:')
-    fuzzy = st.checkbox('Use fuzzy title match', value=True)
+    query = st.text_input('Enter book title (partial allowed):')
+    fuzzy = st.checkbox('Use fuzzy match', True)
 
 def fuzzy_title_search(q, choices, limit=10):
     res = process.extract(q, choices, scorer=fuzz.WRatio, limit=limit)
@@ -53,62 +48,35 @@ if st.button('Recommend'):
     start = time.time()
     if mode == 'Content (title)':
         if not query:
-            st.warning('Enter a book title.')
+            st.warning('Please enter a title to search.')
         else:
             title = query
             if fuzzy:
-                choices = books['title'].astype(str).tolist()
-                matches = fuzzy_title_search(query, choices, limit=5)
+                titles = books['title'].astype(str).tolist()
+                matches = fuzzy_title_search(query, titles, limit=5)
                 if matches:
+                    st.write('Top matches:')
+                    for m in matches:
+                        st.write('-', m)
                     title = matches[0]
             recs = content_model.recommend(title, topn=topn)
             if not recs:
-                st.info('No matches.')
+                st.info('No matches found.')
             else:
-                st.subheader(f'Content recommendations for "{title}"')
+                st.subheader('Similar books to "{}"'.format(title))
                 for r in recs:
-                    st.write(f"**{r['title']}** — {r['authors']} (score: {r['score']:.3f})")
-    elif mode == 'Collaborative (user)':
-        if not query:
-            st.warning('Enter user id.')
-        else:
-            recs = cf_model.recommend_for_user(str(query), topn=topn)
-            if not recs:
-                st.info('No recs for this user.')
-            else:
-                st.subheader(f'Collaborative recommendations for user {query}')
-                for bid in recs:
-                    row = books[books['book_id'] == str(bid)]
-                    if not row.empty:
-                        st.write(f"**{row.iloc[0]['title']}** — {row.iloc[0]['authors']}")
-    else:
-        if not query:
-            st.warning('Enter a title for hybrid mode.')
-        else:
-            title = query
-            if fuzzy:
-                choices = books['title'].astype(str).tolist()
-                matches = fuzzy_title_search(query, choices, limit=5)
-                if matches:
-                    title = matches[0]
-            content_recs = content_model.recommend(title, topn=topn*3)
-            if not content_recs:
-                st.info('No content match.')
-            else:
-                user_field = st.text_input('Optional: enter user id for personalization')
-                merged = []
-                for c in content_recs:
-                    bid = c['book_id']
-                    content_score = c['score']
-                    if user_field:
-                        cf_score = cf_model.predict(user_field, bid)
+                    rating = r.get('__rating__', None)
+                    if rating is not None and not (pd.isna(rating)):
+                        st.write('**{}** — {} (score: {:.3f}, rating: {})'.format(r['title'], r['authors'], r['score'], rating))
                     else:
-                        df = ratings[ratings['book_id'] == str(bid)]
-                        cf_score = float(df['rating'].mean()) if not df.empty else 3.0
-                    hybrid_score = alpha * content_score + (1 - alpha) * (cf_score / 5.0)
-                    merged.append({'book_id': bid, 'title': c['title'], 'authors': c['authors'], 'score': hybrid_score})
-                merged = sorted(merged, key=lambda x: x['score'], reverse=True)[:topn]
-                st.subheader(f'Hybrid recommendations for "{title}" (alpha={alpha:.2f})')
-                for r in merged:
-                    st.write(f"**{r['title']}** — {r['authors']} (score: {r['score']:.3f})")
-    st.write(f"Done in {time.time()-start:.2f}s")
+                        st.write('**{}** — {} (score: {:.3f})'.format(r['title'], r['authors'], r['score']))
+    else:
+        recs = top_popular(books, topn=topn)
+        st.subheader('Top popular books (from supplied rating/count if available)')
+        for r in recs:
+            rating = r.get('__rating__', None)
+            if rating:
+                st.write('**{}** — {} (rating: {})'.format(r['title'], r['authors'], rating))
+            else:
+                st.write('**{}** — {}'.format(r['title'], r['authors']))
+    st.caption('Done in {:.2f}s'.format(time.time()-start))

@@ -1,0 +1,21 @@
+{
+  "columns": [
+    "isbn13",
+    "isbn10",
+    "title",
+    "subtitle",
+    "authors",
+    "categories",
+    "thumbnail",
+    "description",
+    "published_year",
+    "average_rating",
+    "num_pages",
+    "ratings_count"
+  ],
+  "title_col": "title",
+  "author_col": "authors",
+  "id_col": "isbn13",
+  "rating_col": "average_rating",
+  "ratings_count_col": "ratings_count"
+}
