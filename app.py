@@ -7,6 +7,75 @@ from src.content_model import ContentRecommender
 from src.popularity import top_popular
 from rapidfuzz import process, fuzz
 import json, time
+import matplotlib.pyplot as plt
+import pandas as _pd
+
+# ------------------ Plot helpers ------------------
+def plot_rating_histogram(books):
+    if '__rating__' not in books.columns or books['__rating__'].dropna().empty:
+        st.info("No rating column detected in dataset for histogram.")
+        return
+    data = books['__rating__'].dropna().astype(float)
+    fig, ax = plt.subplots(figsize=(6,3.5))
+    ax.hist(data, bins=20, edgecolor='black')
+    ax.set_xlabel('Rating')
+    ax.set_ylabel('Count')
+    ax.set_title('Rating distribution')
+    st.pyplot(fig)
+
+def plot_top_authors(books, topn=10):
+    if 'authors' not in books.columns:
+        st.info('No authors column found for top authors chart.')
+        return
+    ser = books['authors'].fillna('Unknown').astype(str)
+    counts = ser.value_counts().head(topn)
+    fig, ax = plt.subplots(figsize=(7, 0.4*len(counts) + 1.5))
+    ax.barh(counts.index[::-1], counts.values[::-1])
+    ax.set_xlabel('Number of books')
+    ax.set_title('Top authors')
+    plt.tight_layout()
+    st.pyplot(fig)
+
+def plot_rating_vs_count(books):
+    if '__rating__' not in books.columns or 'ratings_count' not in books.columns:
+        st.info('ratings_count or rating column not available for scatter plot.')
+        return
+    df = books.dropna(subset=['__rating__','ratings_count']).copy()
+    if df.empty:
+        st.info('No data for rating vs count plot.')
+        return
+    x = df['ratings_count'].astype(float)
+    y = df['__rating__'].astype(float)
+    fig, ax = plt.subplots(figsize=(6,4))
+    ax.scatter(x, y, alpha=0.6)
+    ax.set_xscale('log')
+    ax.set_xlabel('Ratings count (log scale)')
+    ax.set_ylabel('Rating')
+    ax.set_title('Rating vs Ratings count')
+    st.pyplot(fig)
+
+def plot_publication_years(books, year_col_candidates=('original_publication_year','year','publication_year')):
+    year_col = None
+    for c in year_col_candidates:
+        if c in books.columns:
+            year_col = c
+            break
+    if year_col is None:
+        st.info('No publication year column found.')
+        return
+    years = _pd.to_numeric(books[year_col], errors='coerce').dropna().astype(int)
+    if years.empty:
+        st.info('No valid publication years to plot.')
+        return
+    fig, ax = plt.subplots(figsize=(8,3))
+    ax.hist(years, bins=30)
+    ax.set_xlabel('Publication year')
+    ax.set_ylabel('Count')
+    ax.set_title('Publication year distribution')
+    st.pyplot(fig)
+# ------------------ end plot helpers ------------------
+
+
 st.set_page_config(page_title='Book Recommender (single books.csv)', layout='wide')
 
 # load meta to know which columns were auto-detected
@@ -44,6 +113,21 @@ def fuzzy_title_search(q, choices, limit=10):
     res = process.extract(q, choices, scorer=fuzz.WRatio, limit=limit)
     return [r[0] for r in res]
 
+
+# --- Optional data & charts ---
+show_charts = st.sidebar.checkbox('Show data & charts', value=False)
+if show_charts:
+    st.header('📊 Data exploration')
+    st.subheader('Sample of dataset')
+    st.dataframe(books.head(200))
+    st.subheader('Rating distribution')
+    plot_rating_histogram(books)
+    st.subheader('Top authors')
+    plot_top_authors(books, topn=15)
+    # rating vs count (if available)
+    plot_rating_vs_count(books)
+    st.subheader('Publication year distribution')
+    plot_publication_years(books)
 if st.button('Recommend'):
     start = time.time()
     if mode == 'Content (title)':
