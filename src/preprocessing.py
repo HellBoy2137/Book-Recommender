@@ -2,9 +2,11 @@ import pandas as pd
 
 def prepare_books(books: pd.DataFrame) -> pd.DataFrame:
     books = books.copy()
+    # normalize columns
     if 'book_id' not in books.columns:
-        if 'id' in books.columns:
-            books = books.rename(columns={'id': 'book_id'})
+        for c in ['id','bookId']:
+            if c in books.columns:
+                books.rename(columns={c:'book_id'}, inplace=True)
     for c in ['title','authors']:
         if c not in books.columns:
             books[c] = ''

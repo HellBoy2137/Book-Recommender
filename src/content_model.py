@@ -1,12 +1,14 @@
 import joblib
-from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
 class ContentRecommender:
-    def __init__(self, max_features=15000, ngram_range=(1,2)):
-        self.vectorizer = CountVectorizer(max_features=max_features,
-                                          ngram_range=ngram_range,
-                                          stop_words='english')
+    def __init__(self, method='count', max_features=10000, ngram_range=(1,2)):
+        self.method = method
+        if method == 'count':
+            self.vectorizer = CountVectorizer(max_features=max_features, ngram_range=ngram_range, stop_words='english')
+        else:
+            self.vectorizer = TfidfVectorizer(max_features=max_features, ngram_range=ngram_range, stop_words='english')
         self.matrix = None
         self.books_df = None
         self.fitted = False
@@ -20,7 +22,7 @@ class ContentRecommender:
 
     def recommend(self, title_query, topn=10):
         if not self.fitted:
-            raise RuntimeError("Call fit() first")
+            raise RuntimeError('Call fit() first')
         q = title_query.strip().lower()
         matches = self.books_df[self.books_df['title'].str.lower() == q]
         if matches.empty:

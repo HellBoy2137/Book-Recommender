@@ -30,7 +30,7 @@ class CollaborativeRecommender:
 
     def predict(self, user_id, book_id):
         if not self.fitted:
-            raise RuntimeError("Call fit() first")
+            raise RuntimeError('Call fit() first')
         try:
             uidx = int(self.user_encoder.transform([user_id])[0])
             iidx = int(self.item_encoder.transform([book_id])[0])
@@ -41,7 +41,7 @@ class CollaborativeRecommender:
 
     def recommend_for_user(self, user_id, topn=10):
         if not self.fitted:
-            raise RuntimeError("Call fit() first")
+            raise RuntimeError('Call fit() first')
         if user_id not in self.user_encoder.classes_:
             return []
         uidx = int(self.user_encoder.transform([user_id])[0])
