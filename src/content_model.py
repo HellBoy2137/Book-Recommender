@@ -1,9 +1,10 @@
 import joblib
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 
 class ContentRecommender:
-    def __init__(self, method='count', max_features=10000, ngram_range=(1,2)):
+    def __init__(self, method='count', max_features=8000, ngram_range=(1,2)):
         self.method = method
         if method == 'count':
             self.vectorizer = CountVectorizer(max_features=max_features, ngram_range=ngram_range, stop_words='english')
@@ -33,13 +34,13 @@ class ContentRecommender:
                 top_idxs = sims.argsort()[-topn:][::-1]
                 results = self.books_df.iloc[top_idxs].copy()
                 results['score'] = sims[top_idxs]
-                return results[['book_id','title','authors','score']].to_dict(orient='records')
+                return results[['book_id','title','authors','score','__rating__']].to_dict(orient='records')
         idx = matches.index[0]
         sims = cosine_similarity(self.matrix[idx], self.matrix).flatten()
         top_idxs = sims.argsort()[-topn-1:-1][::-1]
         results = self.books_df.iloc[top_idxs].copy()
         results['score'] = sims[top_idxs]
-        return results[['book_id','title','authors','score']].to_dict(orient='records')
+        return results[['book_id','title','authors','score','__rating__']].to_dict(orient='records')
 
     def save(self, path):
         joblib.dump({'vectorizer': self.vectorizer, 'matrix': self.matrix, 'books': self.books_df}, path)
