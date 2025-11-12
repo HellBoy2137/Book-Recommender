@@ -1,4 +1,4 @@
-# 📚 Book Recommender System (Single Dataset)
+# 📚 Book Recommender System
 
 ### Overview
 This project is a **Book Recommendation Web App** built using **Python**, **Machine Learning**, and **Streamlit**.  
