@@ -5,3 +5,4 @@ scipy
 streamlit
 joblib
 rapidfuzz
+matplotlib
