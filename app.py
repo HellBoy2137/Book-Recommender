@@ -99,7 +99,7 @@ books = load_data()
 # models
 content_model = ContentRecommender(method='count', max_features=8000).fit(books)
 
-st.title('📚 Book Recommender — Single `books.csv`')
+st.title('📚 Book Recommender ')
 st.write('This app uses only the uploaded `data/books.csv`. Content-based recommendations + popularity fallback.')
 
 with st.sidebar:
