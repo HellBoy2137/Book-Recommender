@@ -1,16 +1,16 @@
-# Book Recommender (Goodbooks-based)
+# Book Recommender — New Dataset Package
 
-This repository provides a Streamlit-ready book recommender using the Goodbooks dataset.
-It includes content-based recommendations (CountVectorizer + Cosine) and a collaborative model (TruncatedSVD).
+This package contains a full Streamlit book recommender built from an uploaded dataset (books.csv).
+- Content-based: CountVectorizer + cosine similarity
+- Collaborative: TruncatedSVD MF (built on ratings.csv). If ratings.csv was not provided, a synthetic ratings file was generated for demo purposes.
 
-## How to use
-1. Place your Goodbooks CSVs in the `data/` folder: `books.csv`, `ratings.csv`, `users.csv`.
-2. Create and activate a virtual environment (Windows PowerShell):
-   ```
-   python -m venv venv
-   .\venv\Scripts\activate
-   pip install -r requirements.txt
-   python -m streamlit run app.py
-   ```
-3. Deploy on Streamlit Cloud by pushing to GitHub and connecting the repo.
+How to run locally (Windows PowerShell):
+```powershell
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements.txt
+python -m streamlit run app.py
+```
+
+Deploy: push to GitHub and connect to Streamlit Cloud. Avoid packages needing C compilation.
 
