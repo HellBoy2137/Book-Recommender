@@ -8,7 +8,6 @@ from src.popularity import top_popular
 from rapidfuzz import process, fuzz
 import json, time
 import matplotlib.pyplot as plt
-import pandas as _pd
 
 # ------------------ Plot helpers ------------------
 def plot_rating_histogram(books):
