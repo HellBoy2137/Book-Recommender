@@ -123,7 +123,7 @@ if show_charts:
     plot_rating_histogram(books)
     st.subheader('Top authors')
     plot_top_authors(books, topn=15)
-    # rating vs count (if available)
+    st.subheader('Rating vs Count')
     plot_rating_vs_count(books)
     st.subheader('Publication year distribution')
     plot_publication_years(books)
