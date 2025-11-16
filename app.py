@@ -53,7 +53,7 @@ def plot_rating_vs_count(books):
     ax.set_title('Rating vs Ratings count')
     st.pyplot(fig)
 
-def plot_publication_years(books, year_col_candidates=('original_publication_year','year','publication_year')):
+def plot_publication_years(books, year_col_candidates=('original_publication_year','year','publication_year', 'published_year')):
     year_col = None
     for c in year_col_candidates:
         if c in books.columns:
@@ -62,7 +62,7 @@ def plot_publication_years(books, year_col_candidates=('original_publication_yea
     if year_col is None:
         st.info('No publication year column found.')
         return
-    years = _pd.to_numeric(books[year_col], errors='coerce').dropna().astype(int)
+    years = pd.to_numeric(books[year_col], errors='coerce').dropna().astype(int)
     if years.empty:
         st.info('No valid publication years to plot.')
         return
